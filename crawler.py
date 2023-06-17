@@ -1,7 +1,9 @@
 from urllib.request import urlopen
 from bs4 import BeautifulSoup
+import pandas as pd
 import re
-
+import codecs
+import time
 
 def update_dict(main_dict, src):
     """
@@ -36,23 +38,43 @@ def crawler(url):
     bs = BeautifulSoup(html.read(), 'html.parser')
     for main_info in bs.find_all('div', {'class':'info-attr clearfix'}):
         info_dict[main_info.find_all('span')[0].text] = main_info.find_all('span')[1].text
+    info_dict['address'] = bs.find('div', {'class':'address'}).text
+    info_dict['price'] = bs.find('div', {'class':'price'}).text
     return info_dict
 
-infos_dict = {}
+def page_crawler(url, homes_dict={}):
+    html = urlopen(url) 
+    bs = BeautifulSoup(html.read(), 'html.parser')
+    home_links = []
+    for link in bs.find_all('a', {'class':'link-overlay'}):
+        home_links.append(link.get('href'))
+    for link in home_links:
+        home_dict = crawler(link)
+        update_dict(homes_dict, home_dict)
+        next_page_link = bs.find('a', {'gtm-act':'next'}).get('href')
+    return homes_dict, next_page_link
 
-url = 'https://mogi.vn/quan-binh-tan/mua-nha-hem-ngo/ban-nha-shr-1-tret-2-lau-4pn-san-do-xe-20m2-tai-lk-4-5-gia-2-3-ty-ctl-id22204971'
-info_dict = crawler(url)
-update_dict(infos_dict, info_dict)
-print(infos_dict)
+url = 'https://mogi.vn/mua-nha-dat?cp=1'
+homes_dict = {}
+num_of_exam = 0
+crawled_data_size = 50000
+start_time = time.time()
+try:
+    # Your code here
+    while num_of_exam < crawled_data_size:
+        _,url = page_crawler(url=url, homes_dict=homes_dict)
+        num_of_exam = len(list(homes_dict.values())[0])
+        homes_df = pd.DataFrame(homes_dict)
+        homes_df.to_csv('D:\Workspaces\Projects\HousingPricePrediction\housing_price.csv')
+    while True:
+        # Code execution
+        pass
+except KeyboardInterrupt:
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    print("Elapsed time: {:.2f} seconds".format(elapsed_time))
 
-url = 'https://mogi.vn/quan-binh-tan/mua-nha-hem-ngo/ban-nha-shr-1-tret-2-lau-4pn-san-do-xe-20m2-tai-lk-4-5-gia-2-3-ty-ctl-id22204971'
-info_dict = crawler(url)
-update_dict(infos_dict, info_dict)
-print(infos_dict)
-
-url = 'https://mogi.vn/quan-binh-thanh/mua-nha-mat-tien-pho/can-tien-chua-benh-ban-gap-nha-vo-oanh-binh-thanh-60m2-1-ty-490-shr-id22121085'
-info_dict = crawler(url)
-update_dict(infos_dict, info_dict)
-print(infos_dict)
-
+print('current url: ', url)
+# df = pd.read_csv('D:\Workspaces\Projects\HousingPricePrediction\housing_price.csv')
+# print(df)
 
